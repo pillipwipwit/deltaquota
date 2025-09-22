@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta Quota - Adapei 77</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 45px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: rgba(102, 126, 234, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #764ba2;
+        }
+
+        .upload-zone.dragover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: scale(1.02);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .metric {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            margin-bottom: 15px;
+            transform: translateZ(0);
+            transition: transform 0.3s;
+        }
+
+        .metric:hover {
+            transform: scale(1.05);
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .metric-unit {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .event-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .event-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-top: 20px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .calendar-day.worked {
+            background: #4caf50;
+            color: white;
+        }
+
+        .calendar-day.cp {
+            background: #2196f3;
+            color: white;
+        }
+
+        .calendar-day.ct {
+            background: #ff9800;
+            color: white;
+        }
+
+        .calendar-day.ferie {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .calendar-day.recup {
+            background: #00bcd4;
+            color: white;
+        }
+
+        .calendar-day:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .info-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Gestionnaire Delta Quota - Adapei 77</h1>
+            <p>Calculez et visualisez votre delta quota en temps réel avec reconnaissance OCR avancée</p>
+        </div>
+
+        <div class="grid">
+            <!-- Import Planning -->
+            <div class="card">
+                <h2>📅 Import du Planning</h2>
+                <div class="upload-zone" id="uploadZone">
+                    <p style="font-size: 2rem; margin-bottom: 10px;">📤</p>
+                    <p>Glissez votre planning ici ou cliquez pour sélectionner</p>
+                    <p style="font-size: 0.9rem; color: #888; margin-top: 10px;">Formats acceptés: Image, PDF (max 10MB)</p>
+                    <input type="file" id="fileInput" accept="image/*,.pdf" style="display: none;">
+                </div>
+                <div id="ocrStatus" style="margin-top: 15px;"></div>
+                <button class="btn btn-secondary" onclick="exportData()" style="margin-top: 15px; width: 100%;">
+                    💾 Exporter les Données
+                </button>
+                <button class="btn" onclick="validateOCRData()" style="margin-top: 15px; width: 100%;">
+                    ✅ Valider Données OCR
+                </button>
+                <button class="btn" onclick="showManualEntry()" style="margin-top: 15px; width: 100%;">
+                    ✏️ Saisie Manuelle
+                </button>
+            </div>
+
+            <!-- Profil Salarié -->
+            <div class="card">
+                <h2>👤 Profil Salarié</h2>
+                <div class="form-group">
+                    <label>Type de service</label>
+                    <select id="serviceType">
+                        <option value="internat">Internat</option>
+                        <option value="externat">Externat</option>
+                        <option value="nuit">Surveillant de nuit</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Temps de travail</label>
+                    <select id="workTime">
+                        <option value="plein">Temps plein</option>
+                        <option value="partiel">Temps partiel</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Année de référence</label>
+                    <input type="number" id="refYear" value="2025" min="2020" max="2030">
+                </div>
+            </div>
+
+            <!-- Résultats Delta Quota -->
+            <div class="card">
+                <h2>📈 Delta Quota Actuel</h2>
+                <div class="metric pulse">
+                    <div class="metric-label">Quota Dû</div>
+                    <div class="metric-value"><span id="quotaDu">1456</span> <span class="metric-unit">heures</span></div>
+                </div>
+                <div class="metric" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <div class="metric-label">Quota Réalisé</div>
+                    <div class="metric-value"><span id="quotaRealise">0</span> <span class="metric-unit">heures</span></div>
+                </div>
+                <div class="metric" style="background: linear-gradient(135deg, #4caf50, #8bc34a);">
+                    <div class="metric-label">Delta Quota</div>
+                    <div class="metric-value"><span id="deltaQuota">0</span> <span class="metric-unit">heures</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar" style="width: 0%">
+                        <span id="progressText">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualisation -->
+        <div class="card">
+            <h2>📊 Évolution du Delta Quota</h2>
+            <canvas id="deltaChart" height="100"></canvas>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4caf50;"></div>
+                    <span>Travaillé</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2196f3;"></div>
+                    <span>CP</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9800;"></div>
+                    <span>CT</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9c27b0;"></div>
+                    <span>Férié</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00bcd4;"></div>
+                    <span>Récupération</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Événements -->
+            <div class="card">
+                <h2>📅 Gestion des Événements</h2>
+                <button class="btn" onclick="addEvent('cp')" style="margin-bottom: 10px; width: 100%;">
+                    ➕ Ajouter Congé Payé
+                </button>
+                <button class="btn" onclick="addEvent('ct')" style="margin-bottom: 10px; width: 100%;">
+                    ➕ Ajouter Congé Trimestriel
+                </button>
+                <button class="btn" onclick="addEvent('ferie')" style="margin-bottom: 10px; width: 100%;">
+                    ➕ Jour Férié Travaillé
+                </button>
+                <button class="btn btn-secondary" onclick="addEvent('recup')" style="width: 100%;">
+                    ➕ Récupération
+                </button>
+                <div id="eventsList" style="margin-top: 20px;"></div>
+            </div>
+
+            <!-- Aide et Explications -->
+            <div class="card">
+                <h2>❓ Aide et Explications</h2>
+                <div class="event-item">
+                    <strong>Calcul du Quota Dû</strong>
+                    <span class="info-icon" onclick="showHelp('quotaDu')">?</span>
+                    <p style="margin-top: 10px; color: #666;">261 jours × 7h - fériés - CP - CT</p>
+                </div>
+                <div class="event-item">
+                    <strong>Impact des Jours Fériés</strong>
+                    <span class="info-icon" onclick="showHelp('ferie')">?</span>
+                    <p style="margin-top: 10px; color: #666;">Non travaillé: +7h au delta</p>
+                </div>
+                <div class="event-item">
+                    <strong>Valorisation CP/CT</strong>
+                    <span class="info-icon" onclick="showHelp('cpct')">?</span>
+                    <p style="margin-top: 10px; color: #666;">1 jour = 7h théoriques</p>
+                </div>
+                <div class="event-item">
+                    <strong>Règles CCN 15/03/1966</strong>
+                    <span class="info-icon" onclick="showHelp('ccn')">?</span>
+                    <p style="margin-top: 10px; color: #666;">Max 10h/jour, 48h/semaine</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendrier Visuel -->
+        <div class="card">
+            <h2>📅 Vue Calendaire</h2>
+            <div class="form-group">
+                <label>Mois affiché</label>
+                <input type="month" id="calendarMonth" value="2025-01">
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+    </div>
+
+    <!-- Modal pour saisie manuelle -->
+    <div id="manualModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>✏️ Saisie Manuelle du Planning</h2>
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="manualDate">
+            </div>
+            <div class="form-group">
+                <label>Type de journée</label>
+                <select id="manualType">
+                    <option value="work">Travail</option>
+                    <option value="cp">Congé Payé</option>
+                    <option value="ct">Congé Trimestriel</option>
+                    <option value="ferie">Jour Férié</option>
+                    <option value="recup">Récupération</option>
+                    <option value="repos">Repos</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Heures (si travail)</label>
+                <input type="number" id="manualHours" min="0" max="13" step="0.5" value="7">
+            </div>
+            <button class="btn" onclick="saveManualEntry()" style="width: 100%;">
+                💾 Enregistrer
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal d'aide -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeHelpModal()">&times;</span>
+            <h2>📚 Informations Détaillées</h2>
+            <div id="helpContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration du worker PDF.js
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 
+                "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        }
+
+        // État de l'application
+        const appState = {
+            planning: {},
+            events: [],
+            quotaDu: 1456,
+            quotaRealise: 0,
+            deltaQuota: 0,
+            serviceType: 'internat',
+            workTime: 'plein',
+            year: new Date().getFullYear()
+        };
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupEventListeners();
+            updateCalculations();
+            initializeChart();
+            generateCalendar();
+        });
+
+        function initializeApp() {
+            const today = new Date();
+            document.getElementById('refYear').value = today.getFullYear();
+            document.getElementById('calendarMonth').value = today.toISOString().slice(0, 7);
+        }
+
+        function setupEventListeners() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            // Drag counter pour gérer correctement le drag & drop
+            let dragCounter = 0;
+
+            // Gestionnaires d'événements améliorés pour le drag & drop
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            uploadZone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter++;
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            uploadZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter = Math.max(0, dragCounter - 1);
+                if (dragCounter === 0) {
+                    uploadZone.classList.remove('dragover');
+                }
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter = 0;
+                uploadZone.classList.remove('dragover');
+                
+                const files = e.dataTransfer?.files || [];
+                if (files.length) {
+                    handleFiles(files);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files?.length) {
+                    handleFiles(e.target.files);
+                }
+            });
+
+            // Autres écouteurs d'événements
+            document.getElementById('serviceType').addEventListener('change', updateCalculations);
+            document.getElementById('workTime').addEventListener('change', updateCalculations);
+            document.getElementById('refYear').addEventListener('change', updateCalculations);
+            document.getElementById('calendarMonth').addEventListener('change', generateCalendar);
+        }
+
+        // Fonctions de détection de type de fichier améliorées
+        async function isPDF(file) {
+            if (file.type === "application/pdf") return true;
+            const name = (file.name || "").toLowerCase();
+            if (name.endsWith(".pdf")) return true;
+            
+            // Vérification par signature de fichier
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const bytes = new Uint8Array(reader.result);
+                    // "%PDF" => 0x25 0x50 0x44 0x46
+                    resolve(bytes.length > 4 && 
+                           bytes[0] === 0x25 && 
+                           bytes[1] === 0x50 && 
+                           bytes[2] === 0x44 && 
+                           bytes[3] === 0x46);
+                };
+                reader.onerror = () => resolve(false);
+                reader.readAsArrayBuffer(file.slice(0, 4));
+            });
+        }
+
+        function isImage(file) {
+            if (file.type && file.type.startsWith("image/")) return true;
+            const name = (file.name || "").toLowerCase();
+            return [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".heic", ".heif"]
+                .some(ext => name.endsWith(ext));
+        }
+
+        // Gestion principale des fichiers avec détection améliorée
+        async function handleFiles(files) {
+            const file = files[0];
+            if (!file) {
+                showStatus("Aucun fichier détecté.", "warning");
+                return;
+            }
+
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                showStatus("❌ Fichier trop volumineux (max 10 MB).", "error");
+                return;
+            }
+
+            // Conseils OCR
+            const tips = `
+                <div style="background:#e3f2fd; padding:12px; border-radius:8px; margin:10px 0;">
+                    <strong>💡 Conseils pour un meilleur résultat :</strong>
+                    <ul style="margin: 10px 0 0 20px; color: #555;">
+                        <li>Privilégiez un PDF natif plutôt qu'une image scannée</li>
+                        <li>Assurez-vous que le texte est bien lisible et contrasté</li>
+                        <li>Pour Octime : utilisez une capture du planning individuel</li>
+                    </ul>
+                </div>
+            `;
+
+            // Détection du type de fichier
+            const pdfCheck = await isPDF(file);
+            
+            if (pdfCheck) {
+                document.getElementById('ocrStatus').innerHTML = tips + 
+                    "<p style='color:#667eea'>🔄 Lecture du PDF en cours...</p>";
+                try {
+                    await processPDFAdvanced(file);
+                } catch (e) {
+                    console.error(e);
+                    showStatus("❌ Erreur lors de l'extraction du PDF.", "error");
+                }
+            } else if (isImage(file)) {
+                document.getElementById('ocrStatus').innerHTML = tips + 
+                    "<p style='color:#667eea'>🔄 OCR de l'image en cours...</p>";
+                try {
+                    await processImageOCR(file);
+                } catch (e) {
+                    console.error(e);
+                    showStatus("❌ Erreur OCR sur l'image.", "error");
+                }
+            } else {
+                showStatus("❌ Format non supporté. Utilisez PDF, JPG, PNG, GIF ou BMP.", "error");
+            }
+        }
+
+        // Traitement OCR des images
+        async function processImageOCR(file) {
+            const dataURL = await readAsDataURL(file);
+            
+            const result = await Tesseract.recognize(
+                dataURL,
+                'fra',
+                {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round((m.progress || 0) * 100);
+                            document.getElementById('ocrStatus').innerHTML = 
+                                `<p style='color:#667eea'>🔄 Reconnaissance du texte : ${progress}%</p>`;
+                        }
+                    }
+                }
+            );
+            
+            const confidence = result.data.confidence || 0;
+            
+            if (confidence < 30) {
+                showStatus("⚠️ Qualité d'image faible détectée - Résultats partiels", "warning");
+            } else {
+                showStatus("✅ OCR terminé avec succès", "success");
+            }
+            
+            parseOCRText(result.data.text || "");
+        }
+
+        // Traitement PDF avancé avec extraction de texte et fallback OCR
+        async function processPDFAdvanced(file) {
+            const arrayBuffer = await readAsArrayBuffer(file);
+            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+
+            // Étape 1 : Tentative d'extraction du texte natif
+            let textChunks = [];
+            let hasText = false;
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                try {
+                    const content = await page.getTextContent();
+                    if (content && content.items && content.items.length > 0) {
+                        const pageText = content.items.map(item => item.str).join(' ');
+                        textChunks.push(pageText);
+                        if (pageText.trim().length > 10) {
+                            hasText = true;
+                        }
+                    }
+                } catch (e) {
+                    textChunks.push("");
+                }
+            }
+
+            // Si du texte a été trouvé, l'utiliser
+            if (hasText) {
+                showStatus("✅ PDF extrait avec succès", "success");
+                parseOCRText(textChunks.join("\n"));
+                return;
+            }
+
+            // Étape 2 : Fallback OCR pour PDF scanné
+            showStatus("📄 PDF scanné détecté, conversion OCR en cours...", "info");
+            
+            let ocrText = "";
+            const pagesToOCR = Math.min(pdf.numPages, 3); // Limiter à 3 pages pour les performances
+
+            for (let i = 1; i <= pagesToOCR; i++) {
+                document.getElementById('ocrStatus').innerHTML = 
+                    `<p style='color:#667eea'>🔄 OCR page ${i}/${pagesToOCR}...</p>`;
+                
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 2 }); // Échelle 2x pour meilleure qualité
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                const dataURL = canvas.toDataURL('image/png');
+
+                const result = await Tesseract.recognize(dataURL, 'fra', { 
+                    logger: () => {} // Pas de log pour éviter le spam
+                });
+                
+                ocrText += (result.data.text || "") + "\n";
+            }
+
+            if (ocrText.trim()) {
+                showStatus("✅ OCR du PDF terminé", "success");
+                parseOCRText(ocrText);
+            } else {
+                showStatus("⚠️ Aucun texte détecté dans le PDF", "warning");
+            }
+        }
+
+        // Utilitaires FileReader
+        function readAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function readAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Fonction d'affichage de statut
+        function showStatus(message, type = "info") {
+            const colors = {
+                info: "#667eea",
+                success: "#4caf50",
+                warning: "#ff9800",
+                error: "#f44336"
+            };
+            
+            document.getElementById('ocrStatus').innerHTML = 
+                `<p style="color:${colors[type]}">${message}</p>`;
+        }
+
+        // Parser OCR amélioré
+        function parseOCRText(text) {
+            if (!text || !text.trim()) {
+                showStatus("⚠️ Aucun texte détecté. Essayez un PDF natif si possible.", "warning");
+                return;
+            }
+
+            console.log('Texte OCR extrait:', text);
+            
+            const lines = text.split('\n').filter(line => line.trim().length > 0);
+            let parsedData = [];
+            
+            // Patterns spécifiques Octime
+            const patterns = {
+                date: /(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})/g,
+                horaire: /(\d{1,2})[hH:](\d{2})/g,
+                codeOctime: /\b(OSTP|JFER|RH|CP|CT|CSE|EVF|RCN|REC|RP|SSCT|Nuit|JNT|FERIE|FORM|ASSO)\b/gi,
+                deltaQuota: /delta\s*quota[:\s]*([+\-]?\s*\d+[hH]?\d*)/i
+            };
+            
+            // Recherche des informations dans le texte
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Recherche des dates
+                let dateMatches = [...line.matchAll(patterns.date)];
+                
+                for (const match of dateMatches) {
+                    const day = parseInt(match[1]);
+                    const month = parseInt(match[2]);
+                    let year = parseInt(match[3]);
+                    
+                    // Conversion année sur 2 chiffres
+                    if (year < 100) year += 2000;
+                    
+                    // Validation de la date
+                    if (day > 0 && day <= 31 && month > 0 && month <= 12 && 
+                        year >= 2020 && year <= 2030) {
+                        
+                        const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        
+                        // Contexte : lignes adjacentes
+                        const contextLines = [
+                            lines[i-1] || '',
+                            line,
+                            lines[i+1] || '',
+                            lines[i+2] || ''
+                        ].join(' ');
+                        
+                        // Extraction des horaires
+                        const horaireMatches = [...contextLines.matchAll(patterns.horaire)];
+                        let totalHours = 0;
+                        
+                        for (const hMatch of horaireMatches) {
+                            const hours = parseInt(hMatch[1]);
+                            const minutes = parseInt(hMatch[2]) / 60;
+                            totalHours += hours + minutes;
+                        }
+                        
+                        // Par défaut 7h si pas d'horaire trouvé
+                        if (totalHours === 0 && horaireMatches.length === 0) {
+                            totalHours = 7;
+                        }
+                        
+                        // Détermination du type d'événement
+                        let eventType = 'work';
+                        const codeMatches = [...contextLines.matchAll(patterns.codeOctime)];
+                        
+                        if (codeMatches.length > 0) {
+                            const code = codeMatches[0][1].toLowerCase();
+                            switch (code) {
+                                case 'cp':
+                                    eventType = 'cp';
+                                    totalHours = 7;
+                                    break;
+                                case 'ct':
+                                    eventType = 'ct';
+                                    totalHours = 7;
+                                    break;
+                                case 'rh':
+                                case 'jnt':
+                                    eventType = 'repos';
+                                    totalHours = 0;
+                                    break;
+                                case 'ferie':
+                                case 'jfer':
+                                    eventType = 'ferie';
+                                    break;
+                                case 'rcn':
+                                case 'rec':
+                                    eventType = 'recup';
+                                    break;
+                                default:
+                                    eventType = 'work';
+                            }
+                        }
+                        
+                        // Ajout à l'état
+                        if (!appState.planning[dateKey]) {
+                            appState.planning[dateKey] = {
+                                type: eventType,
+                                hours: totalHours
+                            };
+                            
+                            parsedData.push({
+                                date: dateKey,
+                                type: eventType,
+                                hours: totalHours,
+                                source: 'OCR'
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Recherche du delta quota dans le texte
+            const deltaMatch = text.match(patterns.deltaQuota);
+            if (deltaMatch) {
+                const deltaValue = parseFloat(deltaMatch[1].replace(/[hH\s]/g, ''));
+                if (!isNaN(deltaValue)) {
+                    appState.deltaQuota = deltaValue;
+                    document.getElementById('ocrStatus').innerHTML += 
+                        `<br><p style="color: #2196f3;">📊 Delta quota détecté: ${deltaValue}h</p>`;
+                }
+            }
+            
+            // Recherche des soldes CP/CT
+            const soldeCP = text.match(/solde\s*cp[:\s]*(\d+(?:\.\d+)?)/i);
+            if (soldeCP) {
+                document.getElementById('ocrStatus').innerHTML += 
+                    `<br><p style="color: #2196f3;">📊 Solde CP détecté: ${soldeCP[1]}h</p>`;
+            }
+            
+            if (parsedData.length > 0) {
+                document.getElementById('ocrStatus').innerHTML += 
+                    `<br><p style="color: #4caf50;">✅ ${parsedData.length} entrée(s) extraite(s) du planning</p>`;
+                updateCalculations();
+                generateCalendar();
+                showNotification(`🎉 ${parsedData.length} entrée(s) importée(s) avec succès !`);
+            } else {
+                document.getElementById('ocrStatus').innerHTML += 
+                    '<br><p style="color: #ff9800;">⚠️ Aucune donnée de planning détectée - Vérifiez le format ou utilisez la saisie manuelle</p>';
+            }
+        }
+
+        // Reste des fonctions existantes (calculs, affichage, etc.)
+        function updateCalculations() {
+            const serviceType = document.getElementById('serviceType').value;
+            const workTime = document.getElementById('workTime').value;
+            const year = parseInt(document.getElementById('refYear').value);
+            
+            let joursAnnee = 261;
+            let heuresJour = 7;
+            let joursFeries = 11;
+            let joursCP = 25;
+            let joursCT = 17;
+            
+            switch(serviceType) {
+                case 'nuit':
+                    heuresJour = 10;
+                    break;
+                case 'externat':
+                case 'internat':
+                default:
+                    heuresJour = 7;
+                    break;
+            }
+            
+            let quotaBase = joursAnnee * heuresJour;
+            let deductionsFeries = joursFeries * heuresJour;
+            let deductionsCP = joursCP * heuresJour;
+            let deductionsCT = joursCT * heuresJour;
+            
+            if (workTime === 'plein') {
+                appState.quotaDu = quotaBase - deductionsFeries - deductionsCP - deductionsCT;
+            } else {
+                const prorata = parseFloat(prompt('Quel est votre quotité de temps de travail ? (ex: 0.8 pour 80%)', '0.8')) || 0.8;
+                appState.quotaDu = (quotaBase - deductionsFeries - deductionsCP - deductionsCT) * prorata;
+            }
+            
+            calculateQuotaRealise();
+            updateDisplay();
+            updateChart();
+        }
+
+        function calculateQuotaRealise() {
+            let totalHours = 0;
+            
+            Object.keys(appState.planning).forEach(date => {
+                const day = appState.planning[date];
+                switch(day.type) {
+                    case 'work':
+                        totalHours += day.hours || 7;
+                        break;
+                    case 'cp':
+                    case 'ct':
+                        totalHours += 7;
+                        break;
+                    case 'ferie':
+                        totalHours += day.hours || 7;
+                        break;
+                    case 'recup':
+                        totalHours -= day.hours || 7;
+                        break;
+                }
+            });
+            
+            appState.events.forEach(event => {
+                switch(event.type) {
+                    case 'cp':
+                    case 'ct':
+                        totalHours += 7;
+                        break;
+                    case 'ferie':
+                        totalHours += event.hours || 7;
+                        break;
+                    case 'recup':
+                        totalHours -= event.hours || 7;
+                        break;
+                }
+            });
+            
+            appState.quotaRealise = totalHours;
+            appState.deltaQuota = appState.quotaRealise - appState.quotaDu;
+        }
+
+        function updateDisplay() {
+            document.getElementById('quotaDu').textContent = appState.quotaDu;
+            document.getElementById('quotaRealise').textContent = appState.quotaRealise;
+            document.getElementById('deltaQuota').textContent = appState.deltaQuota;
+            
+            const progress = Math.min(100, Math.max(0, (appState.quotaRealise / appState.quotaDu) * 100));
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            progressBar.style.width = progress + '%';
+            progressText.textContent = Math.round(progress) + '%';
+            
+            if (appState.deltaQuota > 50) {
+                progressBar.style.background = 'linear-gradient(135deg, #f44336, #e91e63)';
+            } else if (appState.deltaQuota < -50) {
+                progressBar.style.background = 'linear-gradient(135deg, #ff9800, #ffc107)';
+            } else {
+                progressBar.style.background = 'linear-gradient(135deg, #4caf50, #8bc34a)';
+            }
+        }
+
+        let deltaChart = null;
+
+        function initializeChart() {
+            const ctx = document.getElementById('deltaChart').getContext('2d');
+            deltaChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: generateMonthLabels(),
+                    datasets: [{
+                        label: 'Quota Réalisé',
+                        data: generateProgressiveData(),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Quota Dû',
+                        data: Array(12).fill(appState.quotaDu / 12),
+                        borderColor: '#f5576c',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y + ' heures';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Heures'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!deltaChart) return;
+            deltaChart.data.datasets[0].data = generateProgressiveData();
+            deltaChart.update();
+        }
+
+        function generateMonthLabels() {
+            return ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 
+                   'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+        }
+
+        function generateProgressiveData() {
+            const data = [];
+            let cumul = 0;
+            for (let i = 0; i < 12; i++) {
+                cumul += Math.random() * 150 + 50;
+                data.push(Math.round(cumul));
+            }
+            return data;
+        }
+
+        function generateCalendar() {
+            const monthInput = document.getElementById('calendarMonth');
+            const [year, month] = monthInput.value.split('-').map(Number);
+            const grid = document.getElementById('calendarGrid');
+            
+            grid.innerHTML = '';
+            
+            const daysOfWeek = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+            daysOfWeek.forEach(day => {
+                const header = document.createElement('div');
+                header.textContent = day;
+                header.style.fontWeight = 'bold';
+                header.style.textAlign = 'center';
+                grid.appendChild(header);
+            });
+            
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const startPadding = (firstDay.getDay() || 7) - 1;
+            
+            for (let i = 0; i < startPadding; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+            
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                dayDiv.textContent = day;
+                
+                const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayData = appState.planning[dateKey];
+                
+                if (dayData) {
+                    switch(dayData.type) {
+                        case 'work':
+                            dayDiv.classList.add('worked');
+                            break;
+                        case 'cp':
+                            dayDiv.classList.add('cp');
+                            break;
+                        case 'ct':
+                            dayDiv.classList.add('ct');
+                            break;
+                        case 'ferie':
+                            dayDiv.classList.add('ferie');
+                            break;
+                        case 'recup':
+                            dayDiv.classList.add('recup');
+                            break;
+                    }
+                }
+                
+                dayDiv.onclick = () => showDayDetails(year, month, day);
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function showDayDetails(year, month, day) {
+            const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayData = appState.planning[date] || { type: 'repos', hours: 0 };
+            
+            alert(`📅 ${day}/${month}/${year}\nType: ${dayData.type}\nHeures: ${dayData.hours}`);
+        }
+
+        function addEvent(type) {
+            const event = {
+                type: type,
+                date: new Date().toISOString().split('T')[0],
+                hours: 7
+            };
+            
+            appState.events.push(event);
+            updateEventsList();
+            updateCalculations();
+            
+            showNotification(`✅ ${getEventLabel(type)} ajouté`);
+        }
+
+        function updateEventsList() {
+            const list = document.getElementById('eventsList');
+            list.innerHTML = '';
+            
+            appState.events.slice(-5).forEach((event, index) => {
+                const item = document.createElement('div');
+                item.className = 'event-item';
+                item.innerHTML = `
+                    <strong>${getEventLabel(event.type)}</strong>
+                    <span style="float: right; color: #999;">${event.date}</span>
+                    <div style="margin-top: 5px; color: #666;">
+                        Impact: ${getEventImpact(event)} heures
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function getEventLabel(type) {
+            const labels = {
+                'cp': '🏖️ Congé Payé',
+                'ct': '📅 Congé Trimestriel',
+                'ferie': '🎉 Jour Férié',
+                'recup': '⏰ Récupération',
+                'work': '💼 Travail'
+            };
+            return labels[type] || type;
+        }
+
+        function getEventImpact(event) {
+            switch(event.type) {
+                case 'cp':
+                case 'ct':
+                    return '+7';
+                case 'ferie':
+                    return `+${event.hours || 7}`;
+                case 'recup':
+                    return `-${event.hours || 7}`;
+                default:
+                    return '0';
+            }
+        }
+
+        function validateOCRData() {
+            const planningEntries = Object.keys(appState.planning).length;
+            
+            if (planningEntries === 0) {
+                showNotification('❌ Aucune donnée à valider');
+                return;
+            }
+            
+            let validationHTML = `
+                <h3>📋 Validation des données extraites</h3>
+                <p><strong>${planningEntries} entrées détectées :</strong></p>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 8px; border: 1px solid #ddd;">Date</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Type</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Heures</th>
+                        </tr>
+            `;
+            
+            Object.keys(appState.planning).sort().forEach(date => {
+                const entry = appState.planning[date];
+                const typeLabel = getEventLabel(entry.type).replace(/[📊🏖️📅🎉⏰💼]/g, '');
+                validationHTML += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${new Date(date).toLocaleDateString('fr-FR')}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${typeLabel}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${entry.hours}h</td>
+                    </tr>
+                `;
+            });
+            
+            validationHTML += `
+                    </table>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>Résumé des calculs :</strong></p>
+                    <p>• Quota dû : ${appState.quotaDu}h</p>
+                    <p>• Quota réalisé : ${appState.quotaRealise}h</p>
+                    <p>• Delta quota : ${appState.deltaQuota}h</p>
+                </div>
+            `;
+            
+            document.getElementById('helpContent').innerHTML = validationHTML;
+            document.getElementById('helpModal').style.display = 'block';
+        }
+
+        function exportData() {
+            const exportData = {
+                metadata: {
+                    exportDate: new Date().toISOString(),
+                    application: 'Gestionnaire Delta Quota - Adapei 77',
+                    version: '2.0'
+                },
+                configuration: {
+                    serviceType: document.getElementById('serviceType').value,
+                    workTime: document.getElementById('workTime').value,
+                    year: document.getElementById('refYear').value
+                },
+                planning: appState.planning,
+                events: appState.events,
+                calculations: {
+                    quotaDu: appState.quotaDu,
+                    quotaRealise: appState.quotaRealise,
+                    deltaQuota: appState.deltaQuota
+                }
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `delta-quota-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showNotification('📁 Données exportées avec succès !');
+        }
+
+        function showManualEntry() {
+            document.getElementById('manualModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('manualModal').style.display = 'none';
+        }
+
+        function saveManualEntry() {
+            const date = document.getElementById('manualDate').value;
+            const type = document.getElementById('manualType').value;
+            const hours = parseFloat(document.getElementById('manualHours').value) || 0;
+            
+            if (!date) {
+                alert('Veuillez sélectionner une date');
+                return;
+            }
+            
+            appState.planning[date] = {
+                type: type,
+                hours: hours
+            };
+            
+            updateCalculations();
+            generateCalendar();
+            closeModal();
+            
+            showNotification('✅ Entrée sauvegardée');
+        }
+
+        function showHelp(topic) {
+            const helpModal = document.getElementById('helpModal');
+            const helpContent = document.getElementById('helpContent');
+            
+            const helpTexts = {
+                'quotaDu': `
+                    <h3>📊 Calcul du Quota Dû</h3>
+                    <p>Le quota dû représente le nombre d'heures théoriques à effectuer sur l'année selon les règles Octime.</p>
+                    <h4>Formule de calcul :</h4>
+                    <ul>
+                        <li>Nombre de jours ouvrés × 7h = 261 × 7 = 1827h</li>
+                        <li>Moins jours fériés × 7h = 11 × 7 = 77h</li>
+                        <li>Moins CP posés × 7h = 25 × 7 = 175h</li>
+                        <li>Moins CT posés × 7h = 17 × 7 = 119h (selon accord Adapei 77)</li>
+                        <li><strong>Total = 1456h pour un temps plein</strong></li>
+                    </ul>
+                `,
+                'ferie': `
+                    <h3>🎉 Impact des Jours Fériés</h3>
+                    <p>Les jours fériés influencent le delta quota selon qu'ils sont travaillés ou non.</p>
+                    <ul>
+                        <li><strong>Férié non travaillé :</strong> Augmente le delta de 7h</li>
+                        <li><strong>Férié travaillé :</strong> Réduit l'impact négatif sur le delta</li>
+                        <li>La différence provient de l'écart entre heures prévues et heures théoriques</li>
+                    </ul>
+                `,
+                'cpct': `
+                    <h3>🏖️ Valorisation CP et CT</h3>
+                    <p>Les congés sont valorisés en heures théoriques selon la CCN 15/03/1966.</p>
+                    <ul>
+                        <li><strong>1 jour de CP = 7h</strong> même si la journée fait 9h</li>
+                        <li><strong>1 jour de CT = 7h</strong> quelle que soit la durée prévue</li>
+                        <li>Cela peut créer un écart favorable ou défavorable selon votre planning</li>
+                    </ul>
+                `,
+                'ccn': `
+                    <h3>📋 Convention Collective 15/03/1966</h3>
+                    <p>Règles principales de la CCN applicables à l'Adapei 77 :</p>
+                    <ul>
+                        <li><strong>Durée maximale quotidienne :</strong> 10h (exceptionnellement 12h)</li>
+                        <li><strong>Amplitude maximale :</strong> 13h entre début et fin</li>
+                        <li><strong>Durée hebdomadaire max :</strong> 48h</li>
+                        <li><strong>Repos quotidien :</strong> 11h consécutives minimum</li>
+                        <li><strong>Repos hebdomadaire :</strong> 35h consécutives</li>
+                        <li><strong>Pause :</strong> 20 min après 6h de travail</li>
+                    </ul>
+                `
+            };
+            
+            helpContent.innerHTML = helpTexts[topic] || '<p>Information non disponible</p>';
+            helpModal.style.display = 'block';
+        }
+
+        function closeHelpModal() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
+
+        function showNotification(message) {
+            const notif = document.createElement('div');
+            notif.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s;
+            `;
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            
+            setTimeout(() => {
+                notif.style.animation = 'slideOut 0.3s';
+                setTimeout(() => notif.remove(), 300);
+            }, 3000);
+        }
+
+        // Fermer les modals en cliquant en dehors
+        window.onclick = function(event) {
+            const manualModal = document.getElementById('manualModal');
+            const helpModal = document.getElementById('helpModal');
+            
+            if (event.target === manualModal) {
+                manualModal.style.display = 'none';
+            }
+            if (event.target === helpModal) {
+                helpModal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
